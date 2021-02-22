@@ -20,9 +20,9 @@ We have also built an application running on Azure that lets you access the serv
 
 ## Getting started
 
-Clone the repository:
+Select one of our release branches and clone the repository:
   ```bash
-  git clone https://github.com/Azure/Industrial-IoT
+  git clone -b <ReleaseBranchName> https://github.com/Azure/Industrial-IoT
   cd Industrial-IoT
   ```
 
@@ -30,18 +30,19 @@ Start the deployment
 
 On Windows:
   ```pwsh
-  .\deploy
+  .\deploy -version <version>
   ```
 
 On Linux:
   ```bash
-  ./deploy.sh
+  ./deploy.sh -version <version>
   ```
 
 For more information, see the [detailed instructions](docs/deploy/howto-deploy-all-in-one.md) and [additional deployment options](docs/deploy/readme.md).
 
 ## Learn more
 
+- The OPC Publisher IoT Edge Module (along with its documentation) has moved to its dedicated GitHub repo [here](https://github.com/azure/iot-edge-opc-publisher).
 - [Documentation and tutorials](https://azure.github.io/Industrial-IoT/).
 - [Releases of the platform](https://github.com/Azure/Industrial-IoT/releases).
 - Explore other Azure Industrial IoT products using this platform.

@@ -6,11 +6,11 @@
 namespace Microsoft.Azure.IIoT.Module.Framework {
     using Microsoft.Azure.IIoT.Module.Framework.Hosting;
     using Microsoft.Azure.IIoT.Module.Framework.Client;
-    using Microsoft.Azure.IIoT.Module.Default;
     using Microsoft.Azure.IIoT.Diagnostics;
     using Microsoft.Azure.IIoT.Tasks.Default;
     using Microsoft.Azure.IIoT.Tasks;
     using Autofac;
+    using Microsoft.Azure.IIoT.Http.Default;
 
     /// <summary>
     /// Injected module framework module
@@ -48,8 +48,8 @@ namespace Microsoft.Azure.IIoT.Module.Framework {
                 .AsImplementedInterfaces().SingleInstance()
                 .IfNotRegistered(typeof(ITaskScheduler));
 #endif
-            // Register http (tunnel) client module
-            builder.RegisterModule<HttpTunnelClient>();
+            // Http client
+            builder.RegisterModule<HttpClientModule>();
 
             // Register edgelet client (uses http)
             builder.RegisterType<EdgeletClient>()

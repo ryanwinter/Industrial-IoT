@@ -11,11 +11,9 @@ namespace Microsoft.Azure.IIoT.OpcUa.Protocol.Sample {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Xml;
-    using System.IdentityModel.Selectors;
     using System.Security.Cryptography.X509Certificates;
 
     /// <summary>
@@ -508,11 +506,11 @@ namespace Microsoft.Azure.IIoT.OpcUa.Protocol.Sample {
                     }
 
                     // determine if self-signed.
-                    var isSelfSigned = Utils.CompareDistinguishedName(
+                    var isSelfSigned = X509Utils.CompareDistinguishedName(
                         certificate.Subject, certificate.Issuer);
 
                     // do not allow self signed application certs as user token
-                    if (isSelfSigned && Utils.HasApplicationURN(certificate)) {
+                    if (isSelfSigned && X509Utils.HasApplicationURN(certificate)) {
                         throw new ServiceResultException(StatusCodes.BadCertificateUseNotAllowed);
                     }
                     return false;

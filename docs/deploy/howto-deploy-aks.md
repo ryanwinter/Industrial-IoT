@@ -30,7 +30,7 @@
 
 `Microsoft.Azure.IIoT.Deployment` is a command line application for deploying Azure Industrial IoT solution.
 It takes care of deploying Azure infrastructure resources and microservices of Azure Industrial IoT solution.
-By default, it deploys `2.7.170` version of Azure Industrial IoT microservices.
+By default, it deploys `2.7.206` version of Azure Industrial IoT microservices.
 
 The main difference compared to the [script based deployment](howto-deploy-all-in-one.md) option is that
 from an infrastructure perspective `Microsoft.Azure.IIoT.Deployment` deploys microservices to an Azure
@@ -461,8 +461,8 @@ Command line argument key-value pairs can be specified with:
 | `ResourceGroup:UseExisting` | If set, should be `true` or `false`.                | Determines whether an existing Resource Group should be used or a new one should be created. |                                           |
 | `ResourceGroup:Region`      | Check bellow for list of supported Azure regions.   | Region where new Resource Group should be created.                                           |                                           |
 | `Helm:RepoUrl`              | Should be URL.                                      | Helm repository URL for `azure-industrial-iot` Helm chart.                                   | `https://microsoft.github.io/charts/repo` |
-| `Helm:ChartVersion`         |                                                     | `azure-industrial-iot` Helm chart version to be deployed.                                    | `0.3.1`                                   |
-| `Helm:ImageTag`             |                                                     | Docker image tag for Azure Industrial IoT components to be deployed.                         | `2.7.170`                                 |
+| `Helm:ChartVersion`         |                                                     | `azure-industrial-iot` Helm chart version to be deployed.                                    | `0.3.2`                                   |
+| `Helm:ImageTag`             |                                                     | Docker image tag for Azure Industrial IoT components to be deployed.                         | `2.7.206`                                 |
 | `ApplicationRegistration`   | Object, see [Special Notes](#special-notes) bellow. | Provides definitions of existing Applications and Service Principals to be used.             |                                           |
 | `SaveEnvFile`               | If set, should be `true` or `false`.                | Defines whether to create .env file after successful deployment or not.                      |                                           |
 | `NoCleanup`                 | If set, should be `true` or `false`.                | Defines whether to perform cleanup if an error occurs during deployment.                     |                                           |
@@ -527,16 +527,16 @@ The following Azure regions are supported by `Microsoft.Azure.IIoT.Deployment` f
     Provides definitions of applications and Service Principals to be used. Those definitions will be used
     instead of creating new application registrations and Service Principals for deployment of Azure
     resources.
-  
+
     This is particularly useful in `ResourceDeployment` mode, where `Microsoft.Azure.IIoT.Deployment` would
     rely on existing Application Registrations and Service Principals.
 
     > **Note**: Execution in `ApplicationRegistration` run mode will output JSON object for this property that should be used on consequent `ResourceDeployment`
     run.
-  
+
     Properties correspond to that of application registration and Service Principal manifests. Definition
     of application properties can be found [here](https://docs.microsoft.com/azure/active-directory/develop/reference-app-manifest).
-  
+
     Application objects should contain the following properties:
 
     ``` json
@@ -590,50 +590,14 @@ The following Azure regions are supported by `Microsoft.Azure.IIoT.Deployment` f
 ### AKS
 
 All cloud microservices of Azure Industrial IoT solution are deployed to an AKS Kubernetes cluster.
-`Microsoft.Azure.IIoT.Deployment` deploys `1.16.10` version of Kubernetes.
+`Microsoft.Azure.IIoT.Deployment` deploys latest available patch version of `1.18` Kubernetes.
 
 #### Kubernetes Dashboard
 
-To see state of microservices you can check Kubernetes dashboard.
-
-You can follow this tutorial to do that: [Access the Kubernetes web dashboard in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/azure/aks/kubernetes-dashboard).
-Please follow the steps for `1.16.10` version.
-
-Alternatively, you can run the following commands:
-
-1. Make sure you have `kubectl` installed. If it is not already installed, run the following command to
-    download and install `kubectl`:
-
-    ```bash
-    az aks install-cli
-    ```
-
-    More details about the command and its optional parameters can be found [here](https://docs.microsoft.com/cli/azure/aks?view=azure-cli-latest#az-aks-install-cli).
-
-2. Get admin access credentials for a managed Kubernetes cluster. You would need the name of the resource
-    group containing AKS resource and the name of the AKS resource:
-
-    ```bash
-    az aks get-credentials --admin --resource-group myResourceGroup --name myAKSCluster
-    ```
-
-    More details about the command and its optional parameters can be found [here](https://docs.microsoft.com/cli/azure/aks?view=azure-cli-latest#az-aks-get-credentials).
-
-3. Open a proxy to Kubernetes API Server:
-
-    ```bash
-    kubectl proxy
-    ```
-
-    More details about the command and its optional parameters can be found [here](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#proxy).
-
-4. Open the following URL in your browser: `http://127.0.0.1:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy`
-
-5. Sign in to Kubernetes dashboard using kubeconfig:
-
-   * Select `Kubeconfig` and click `Choose kubeconfig file` to open file selector.
-   * Select your `kubeconfig` file (defaults to `$HOME/.kube/config`).
-   * Click `Sign In`.
+One can use Kubernetes Dashboard to see state of microservices in a Kubernetes cluster. AKS `1.18.x` and above does not
+contain Kubernetes Dashboard by default. So one will need to deploy it before using it. Please follow the steps
+[here](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) to deploy and then access
+Kubernetes Dashboard.
 
 ### Helm Charts
 
@@ -642,16 +606,16 @@ Alternatively, you can run the following commands:
 `azure-industrial-iot` Helm chart will be deployed. For more details about the chart please check its
 [documentation](../../deploy/helm/azure-industrial-iot/README.md).
 
-By default, `Microsoft.Azure.IIoT.Deployment` deploys `0.3.1` version of `azure-industrial-iot` Helm chart
-with `2.7.170` version of Azure Industrial IoT components. Both chart version and components version can be
+By default, `Microsoft.Azure.IIoT.Deployment` deploys `0.3.2` version of `azure-industrial-iot` Helm chart
+with `2.7.206` version of Azure Industrial IoT components. Both chart version and components version can be
 changed using configuration parameters. Please check `Helm:ChartVersion` and `Helm:ImageTag` parameters for
 that.
 
 Additionally, the following Helm charts will be deployed:
 
-* [`stable/nginx-ingress`](https://hub.helm.sh/charts/stable/nginx-ingress) (version `1.36.0`) will be
-  deployed to `nginx-ingress` namespace to act as Ingress Controller.
-* [`jetstack/cert-manager`](https://hub.helm.sh/charts/jetstack/cert-manager) (version `v0.13.0`) will be
+* [`ingress-nginx/ingress-nginx`](https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx) (version `3.12.0`) will be
+  deployed to `ingress-nginx` namespace to act as Ingress Controller.
+* [`jetstack/cert-manager`](https://artifacthub.io/packages/helm/jetstack/cert-manager) (version `v1.1.0`) will be
   deployed to `cert-manager` namespace to provide valid SSL certificates for Ingress resources.
 
 ### APIs of Microservices
@@ -673,9 +637,6 @@ The following microservice endpoints are exposed:
 |-------------|--------------------|--------------------------------------|------------------------------------------------------------------|
 | `registry`  | `/registry/`       | `/registry/swagger/index.html`       | [Registry Microservice](../services/registry.md)                 |
 | `twin`      | `/twin/`           | `/twin/swagger/index.html`           | [OPC Twin Microservice](../services/twin.md)                     |
-| `history`   | `/history/`        | `/history/swagger/index.html`        | [OPC Historian Access Microservice](../services/twin-history.md) |
-| `gateway`   | `/ua/`             | N/A                                  | [OPC Gateway Microservice](../services/twin-gateway.md)          |
-| `vault`     | `/vault/`          | `/vault/swagger/index.html`          | [OPC Vault Microservice](../services/vault.md)                   |
 | `publisher` | `/publisher/`      | `/publisher/swagger/index.html`      | [OPC Publisher Service](../services/publisher.md)                |
 | `events`    | `/events/`         | `/events/swagger/index.html`         | [Events Service](../services/events.md)                          |
 | `edgeJobs`  | `/edge/publisher/` | `/edge/publisher/swagger/index.html` | [Publisher jobs orchestrator service](../services/publisher.md)  |
@@ -703,6 +664,7 @@ Azure AD Docs:
 Azure Kubernetes Service (AKS) Docs:
 
 * [Access the Kubernetes web dashboard in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/azure/aks/kubernetes-dashboard)
+* [Kubernetes Web UI (Dashboard)](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)
 * [Install applications with Helm in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/azure/aks/kubernetes-helm)
 * [Create an HTTPS ingress controller and use your own TLS certificates on Azure Kubernetes Service (AKS)](https://docs.microsoft.com/azure/aks/ingress-own-tls)
 

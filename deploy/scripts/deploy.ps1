@@ -65,7 +65,7 @@
 
 param(
     [ValidateSet("minimum", "local", "services", "simulation", "app", "all")] [string] $type = "all",
-    [string] $version,
+    [string] $version = "preview",
     [string] $applicationName,
     [string] $resourceGroupName,
     [string] $resourceGroupLocation,
@@ -975,7 +975,6 @@ Function New-Deployment() {
                     $replyUrls.Add($serviceUri + "/twin/swagger/oauth2-redirect.html")
                     $replyUrls.Add($serviceUri + "/registry/swagger/oauth2-redirect.html")
                     $replyUrls.Add($serviceUri + "/history/swagger/oauth2-redirect.html")
-                    $replyUrls.Add($serviceUri + "/vault/swagger/oauth2-redirect.html")
                     $replyUrls.Add($serviceUri + "/publisher/swagger/oauth2-redirect.html")
                     $replyUrls.Add($serviceUri + "/edge/publisher/swagger/oauth2-redirect.html")
                     $replyUrls.Add($serviceUri + "/events/swagger/oauth2-redirect.html")
@@ -984,7 +983,6 @@ Function New-Deployment() {
                 $replyUrls.Add("http://localhost:9080/twin/swagger/oauth2-redirect.html")
                 $replyUrls.Add("http://localhost:9080/registry/swagger/oauth2-redirect.html")
                 $replyUrls.Add("http://localhost:9080/history/swagger/oauth2-redirect.html")
-                $replyUrls.Add("http://localhost:9080/vault/swagger/oauth2-redirect.html")
                 $replyUrls.Add("http://localhost:9080/publisher/swagger/oauth2-redirect.html")
                 $replyUrls.Add("http://localhost:9080/edge/publisher/swagger/oauth2-redirect.html")
                 $replyUrls.Add("http://localhost:9080/events/swagger/oauth2-redirect.html")
@@ -1155,6 +1153,8 @@ $script:requiredProviders = @(
     "microsoft.compute",
     "microsoft.containerregistry"
 )
+
+Write-Host "Using '$($script:version)' version..."
 
 Select-RepositoryAndBranch
 Write-Host "Signing in ..."

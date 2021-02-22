@@ -8,7 +8,6 @@ namespace Microsoft.Azure.IIoT.Services.OpcUa.Events.Runtime {
     using Microsoft.Azure.IIoT.AspNetCore.OpenApi.Runtime;
     using Microsoft.Azure.IIoT.AspNetCore.Cors;
     using Microsoft.Azure.IIoT.AspNetCore.Cors.Runtime;
-    using Microsoft.Azure.IIoT.AspNetCore.Auth;
     using Microsoft.Azure.IIoT.AspNetCore.ForwardedHeaders;
     using Microsoft.Azure.IIoT.AspNetCore.ForwardedHeaders.Runtime;
     using Microsoft.Azure.IIoT.Messaging.SignalR;
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.IIoT.Services.OpcUa.Events.Runtime {
     public class Config : DiagnosticsConfig, IWebHostConfig, IServiceBusConfig,
         ICorsConfig, IOpenApiConfig, ISignalRServiceConfig,
         IEventProcessorConfig, IEventHubConsumerConfig, IForwardedHeadersConfig,
-        IEventProcessorHostConfig, IRoleConfig {
+        IEventProcessorHostConfig {
 
         /// <inheritdoc/>
         public string CorsWhitelist => _cors.CorsWhitelist;
@@ -108,10 +107,6 @@ namespace Microsoft.Azure.IIoT.Services.OpcUa.Events.Runtime {
         /// <inheritdoc/>
         public int AspNetCoreForwardedHeadersForwardLimit =>
             _fh.AspNetCoreForwardedHeadersForwardLimit;
-
-        /// <inheritdoc/>
-        public bool UseRoles => GetBoolOrDefault(PcsVariable.PCS_AUTH_ROLES);
-
 
         /// <summary>
         /// Configuration constructor

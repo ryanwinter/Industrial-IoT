@@ -6,7 +6,6 @@
 namespace Microsoft.Azure.IIoT.Services.OpcUa.Twin.Runtime {
     using Microsoft.Azure.IIoT.AspNetCore.OpenApi;
     using Microsoft.Azure.IIoT.AspNetCore.OpenApi.Runtime;
-    using Microsoft.Azure.IIoT.AspNetCore.Auth;
     using Microsoft.Azure.IIoT.AspNetCore.Cors;
     using Microsoft.Azure.IIoT.AspNetCore.Cors.Runtime;
     using Microsoft.Azure.IIoT.AspNetCore.ForwardedHeaders;
@@ -24,7 +23,7 @@ namespace Microsoft.Azure.IIoT.Services.OpcUa.Twin.Runtime {
     /// Common web service configuration aggregation
     /// </summary>
     public class Config : DiagnosticsConfig, IWebHostConfig, IIoTHubConfig,
-        ICorsConfig, IOpenApiConfig, IForwardedHeadersConfig, IRoleConfig,
+        ICorsConfig, IOpenApiConfig, IForwardedHeadersConfig,
         IContainerRegistryConfig {
 
         /// <inheritdoc/>
@@ -66,9 +65,6 @@ namespace Microsoft.Azure.IIoT.Services.OpcUa.Twin.Runtime {
         public string ImagesNamespace => _cr.ImagesNamespace;
         /// <inheritdoc/>
         public string ImagesTag => _cr.ImagesTag;
-
-        /// <inheritdoc/>
-        public bool UseRoles => GetBoolOrDefault(PcsVariable.PCS_AUTH_ROLES);
 
         /// <inheritdoc/>
         public bool AspNetCoreForwardedHeadersEnabled =>

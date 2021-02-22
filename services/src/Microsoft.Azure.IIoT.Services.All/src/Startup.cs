@@ -99,16 +99,10 @@ namespace Microsoft.Azure.IIoT.Services.All {
 
             // Minimal API surface
             app.AddStartupBranch<OpcUa.Registry.Startup>("/registry");
-            app.AddStartupBranch<OpcUa.Vault.Startup>("/vault");
             app.AddStartupBranch<OpcUa.Twin.Startup>("/twin");
             app.AddStartupBranch<OpcUa.Publisher.Startup>("/publisher");
             app.AddStartupBranch<OpcUa.Publisher.Edge.Startup>("/edge/publisher");
             app.AddStartupBranch<OpcUa.Events.Startup>("/events");
-
-            if (!Config.IsMinimumDeployment) {
-                app.AddStartupBranch<OpcUa.Twin.Gateway.Startup>("/ua");
-                app.AddStartupBranch<OpcUa.Twin.History.Startup>("/history");
-            }
 
             app.UseHealthChecks("/healthz");
 
@@ -160,15 +154,9 @@ namespace Microsoft.Azure.IIoT.Services.All {
                 var processes = new List<Task> {
                     Task.Run(() => OpcUa.Registry.Sync.Program.Main(args), _cts.Token),
                     Task.Run(() => Processor.Onboarding.Program.Main(args), _cts.Token),
-                    Task.Run(() => Processor.Tunnel.Program.Main(args), _cts.Token),
                     Task.Run(() => Processor.Events.Program.Main(args), _cts.Token),
                     Task.Run(() => Processor.Telemetry.Program.Main(args), _cts.Token),
                 };
-
-                if (!_config.IsMinimumDeployment) {
-                    processes.Add(Task.Run(() => Processor.Telemetry.Cdm.Program.Main(args),
-                        _cts.Token));
-                }
                 _runner = Task.WhenAll(processes.ToArray());
             }
 

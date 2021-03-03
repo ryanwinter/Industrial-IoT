@@ -452,14 +452,15 @@ namespace IIoTPlatform_E2E_Tests {
             CancellationToken ct = default,
             IEnumerable<string> requestedEndpointUrls = null
         ) {
-            ct.ThrowIfCancellationRequested();
-
             try {
                 dynamic json;
                 int foundEndpoints = 0;
                 int numberOfItems;
                 bool shouldExit = false;
+
                 do {
+                    ct.ThrowIfCancellationRequested();
+
                     foundEndpoints = 0;
                     var accessToken = await TestHelper.GetTokenAsync(context, ct);
                     var client = new RestClient(context.IIoTPlatformConfigHubConfig.BaseUrl) {
@@ -529,14 +530,14 @@ namespace IIoTPlatform_E2E_Tests {
             CancellationToken ct = default,
             IEnumerable<string> requestedEndpointUrls = null) {
 
-            ct.ThrowIfCancellationRequested();
-
             try {
                 dynamic json;
                 int foundEndpoints = 0;
                 int numberOfItems;
                 bool shouldExit = false;
                 do {
+                    ct.ThrowIfCancellationRequested();
+
                     var accessToken = await TestHelper.GetTokenAsync(context, ct);
                     var client = new RestClient(context.IIoTPlatformConfigHubConfig.BaseUrl) {
                         Timeout = TestConstants.DefaultTimeoutInMilliseconds

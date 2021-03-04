@@ -20,60 +20,81 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
     public class C_DiscoverEndpointsTestTheory {
         private readonly ITestOutputHelper _output;
         private readonly IIoTMultipleNodesTestContext _context;
+        private readonly CancellationTokenSource _cancellationToken;
+        private readonly List<dynamic> _servers;
 
         public C_DiscoverEndpointsTestTheory(IIoTMultipleNodesTestContext context, ITestOutputHelper output) {
             _output = output ?? throw new ArgumentNullException(nameof(output));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _context.OutputHelper = _output;
+            _cancellationToken = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
+
+            // Switch to Orchestrated mode
+            TestHelper.SwitchToOrchestratedModeAsync(_context).GetAwaiter().GetResult();
+
+            // Get OAuth token
+            var token = TestHelper.GetTokenAsync(_context, _cancellationToken.Token).GetAwaiter().GetResult();
+            Assert.NotEmpty(token);
+
+            // Get info about servers
+            var simulatedOpcServers = TestHelper.GetSimulatedPublishedNodesConfigurationAsync(_context, _cancellationToken.Token).GetAwaiter().GetResult();
+            var urls = simulatedOpcServers.Values.ToList().Select(s => s.EndpointUrl).ToList();
+            AddTestOpcServers(urls);
+            dynamic result = TestHelper.WaitForDiscoveryToBeCompletedAsync(_context, _cancellationToken.Token, requestedEndpointUrls: urls).GetAwaiter().GetResult();
+            _servers = result.items;
+
+            // Remove servers
+            var applicationIds = _servers.Select(s => s.applicationId?.ToString());
+            RemoveAllApplications(applicationIds.OfType<string>().ToList());
         }
 
         [Fact, PriorityOrder(0)]
-        public void D1_Discover_All_OPC_UA_Endpoints() {
-            // Switch to Orchestrated mode
-            TestHelper.SwitchToOrchestratedModeAsync(_context).GetAwaiter().GetResult();
+        public void Test_Discover_OPC_UA_Endpoints_IpAddress() {
+            // Add 1 server
+            var server = _servers[0];
+            string url = Convert.ToString(server.discoveryUrls[0]).TrimEnd('/');
+            var urls = new List<string> { url };
+            AddTestOpcServers(urls);
 
-            // Add servers
-            var endpointUrls = AddServers(10);
-            
-            // Discover all servers
-            var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
-            dynamic result = TestHelper.WaitForDiscoveryToBeCompletedAsync(_context, cts.Token, requestedEndpointUrls: endpointUrls).GetAwaiter().GetResult();
+            // Registers servers by running a discovery scan 
+            string ipAddress = Convert.ToString(server.hostAddresses[0]);
+            var cidr = ipAddress.Replace(":50000/", "") + "/16";
+            var body = new {
+                configuration = new {
+                    addressRangesToScan = cidr
+                }
+            };
 
-            // Validate that all servers are discovered
-            var applicationIds = new List<string>(endpointUrls.Count);
-            Assert.Equal(endpointUrls.Count, result.items.Count);
-            for (int i = 0; i < result.items.Count; i++) {
-                Assert.Equal("Server", result.items[i].applicationType);
-                Assert.True(endpointUrls.Contains(result.items[i].discoveryUrls[0].TrimEnd('/')));
-                applicationIds.Add(result.items[i].applicationId);
-            }
+            var accessToken = TestHelper.GetTokenAsync(_context, _cancellationToken.Token).GetAwaiter().GetResult();
+            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
+            var request = new RestRequest(Method.POST);
+            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
+            request.Resource = TestConstants.APIRoutes.RegistryApplications + "/discover";
+            request.AddJsonBody(JsonConvert.SerializeObject(body));
+            var response = client.ExecuteAsync(request, _cancellationToken.Token).GetAwaiter().GetResult();
+            Assert.True(response.IsSuccessful);
 
-            // Remove all servers
-            RemoveAllApplications(applicationIds);
+            // Validate that the endpoint can be found
+            var result = TestHelper.WaitForEndpointDiscoveryToBeCompleted(_context, _cancellationToken.Token, requestedEndpointUrls: urls).GetAwaiter().GetResult();           
+            Assert.Equal(url, ((string)result.items[0].registration.endpointUrl).TrimEnd('/'));
         }
 
-        [Fact, PriorityOrder(1)]
-        public void D2_Discover_OPC_UA_Endpoints_IpAddress() {
-            // Switch to Orchestrated mode
-            TestHelper.SwitchToOrchestratedModeAsync(_context).GetAwaiter().GetResult();
-
+        [Fact, PriorityOrder(2)]
+        public void Test_Discover_OPC_UA_Endpoints_PortRange() {
             var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
 
-            // Add one server
-            var endpointUrls = AddServers(1);
-            
-            
-            dynamic result = TestHelper.WaitForDiscoveryToBeCompletedAsync(_context, cts.Token, requestedEndpointUrls: endpointUrls).GetAwaiter().GetResult();
-            var a = result.items[0].applicationId;
-            var ipAddress = result.items[0].hostAddresses[0];
-            
+            // Add 5 servers
+            var urls = _servers.SelectMany(s => (List<object>)s.discoveryUrls).Take(5).OfType<string>().ToList();
+            urls = urls.Select(u => u.TrimEnd('/')).ToList();
+            AddTestOpcServers(urls);
+
             var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
             var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
 
-            var adr = ipAddress.Replace(":50000","") + "/16";
+            // Registers servers by running a discovery scan
             var body = new {
                 configuration = new {
-                    addressRangesToScan = adr
+                    portRangesToScan = "50000:51000"
                 }
             };
 
@@ -84,25 +105,43 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
             var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
             Assert.True(response.IsSuccessful);
             
-            result = TestHelper.WaitForEndpointDiscoveryToBeCompleted(_context, cts.Token, requestedEndpointUrls: endpointUrls).GetAwaiter().GetResult();
-            Assert.Single(result);
-
-            RemoveAllApplications(new List<string> { a });
+            // Validate that all endpoints are found
+            var result = TestHelper.WaitForEndpointDiscoveryToBeCompleted(_context, cts.Token, requestedEndpointUrls: urls).GetAwaiter().GetResult();
+            foreach (var item in result.items) {
+                Assert.Contains(((string)item.registration.endpointUrl).TrimEnd('/'), urls);
+            }
         }
 
-        private List<string> AddServers(int maxNumberOfServers) {
+        [Fact, PriorityOrder(2)]
+        public void Test_Discover_All_OPC_UA_Endpoints() {
+            // Add 5 servers
+            var endpointUrls = _servers.SelectMany(s => (List<object>)s.discoveryUrls).Take(5).OfType<string>().ToList();
+            endpointUrls = endpointUrls.Select(u => u.TrimEnd('/')).ToList();
+            AddTestOpcServers(endpointUrls);
+
+            // Discover all servers
             var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
-            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
-            var simulatedOpcServer = TestHelper.GetSimulatedPublishedNodesConfigurationAsync(_context, cts.Token).GetAwaiter().GetResult();
+            dynamic result = TestHelper.WaitForDiscoveryToBeCompletedAsync(_context, cts.Token, requestedEndpointUrls: endpointUrls).GetAwaiter().GetResult();
 
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-            var endpointUrls = simulatedOpcServer.Values.Select(s => s.EndpointUrl).ToList();
-
-            if (endpointUrls.Count < maxNumberOfServers) {
-                maxNumberOfServers = endpointUrls.Count;
+            // Validate that all servers are discovered
+            var applicationIds = new List<string>(endpointUrls.Count);
+            Assert.Equal(endpointUrls.Count, result.items.Count);
+            for (int i = 0; i < result.items.Count; i++) {
+                Assert.Equal("Server", result.items[i].applicationType);
+                Assert.True((bool)endpointUrls.Contains(result.items[i].discoveryUrls[0].TrimEnd('/')));
+                applicationIds.Add(result.items[i].applicationId);
             }
 
-            for (int i = 0; i < maxNumberOfServers; i++) {
+            // Remove all servers
+            RemoveAllApplications(applicationIds);
+        }
+
+        private void AddTestOpcServers(List<string> endpointUrls) {
+            var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
+            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
+            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
+
+            for (int i = 0; i < endpointUrls.Count; i++) {
                 var body = new {
                     discoveryUrl = endpointUrls[i]
                 };
@@ -116,9 +155,8 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
                 var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
                 Assert.NotNull(response);
             }
-
-            return endpointUrls.Take(maxNumberOfServers).ToList();
         }
+
         private void RemoveApplication(string applicationId) {
             var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
             var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
@@ -132,21 +170,9 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
         }
 
         private void RemoveAllApplications(List<string> applicationIds) {
-            var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
-
-            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-
-            var request = new RestRequest(Method.DELETE);
-            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
-            request.Resource = TestConstants.APIRoutes.RegistryApplications;
-
-            var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
-            Assert.True(response.IsSuccessful);
-
-            // Check that all servers are removed
-            var c = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            Assert.Throws<OperationCanceledException>(() => TestHelper.WaitForDiscoveryToBeCompletedAsync(_context, c.Token).GetAwaiter().GetResult());
+            foreach (var appId in applicationIds) {
+                RemoveApplication(appId);
+            }
         }
     }
 }

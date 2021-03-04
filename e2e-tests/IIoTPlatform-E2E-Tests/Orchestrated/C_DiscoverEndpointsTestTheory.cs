@@ -21,6 +21,7 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
         private readonly ITestOutputHelper _output;
         private readonly IIoTMultipleNodesTestContext _context;
         private readonly CancellationTokenSource _cancellationToken;
+        private readonly RestClient _restClient;
         private readonly List<dynamic> _servers;
 
         public C_DiscoverEndpointsTestTheory(IIoTMultipleNodesTestContext context, ITestOutputHelper output) {
@@ -28,6 +29,7 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _context.OutputHelper = _output;
             _cancellationToken = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
+            _restClient = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
 
             // Switch to Orchestrated mode
             TestHelper.SwitchToOrchestratedModeAsync(_context).GetAwaiter().GetResult();
@@ -64,15 +66,8 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
                     addressRangesToScan = cidr
                 }
             };
-
-            var accessToken = TestHelper.GetTokenAsync(_context, _cancellationToken.Token).GetAwaiter().GetResult();
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-            var request = new RestRequest(Method.POST);
-            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
-            request.Resource = TestConstants.APIRoutes.RegistryApplications + "/discover";
-            request.AddJsonBody(JsonConvert.SerializeObject(body));
-            var response = client.ExecuteAsync(request, _cancellationToken.Token).GetAwaiter().GetResult();
-            Assert.True(response.IsSuccessful);
+            var route = TestConstants.APIRoutes.RegistryApplications + "/discover";
+            CallRestApi(Method.POST, route, body);
 
             // Validate that the endpoint can be found
             var result = TestHelper.WaitForEndpointDiscoveryToBeCompleted(_context, _cancellationToken.Token, requestedEndpointUrls: urls).GetAwaiter().GetResult();           
@@ -88,22 +83,14 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
             urls = urls.Select(u => u.TrimEnd('/')).ToList();
             AddTestOpcServers(urls);
 
-            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-
             // Registers servers by running a discovery scan
             var body = new {
                 configuration = new {
                     portRangesToScan = "50000:51000"
                 }
             };
-
-            var request = new RestRequest(Method.POST);
-            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
-            request.Resource = TestConstants.APIRoutes.RegistryApplications + "/discover";
-            request.AddJsonBody(JsonConvert.SerializeObject(body));
-            var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
-            Assert.True(response.IsSuccessful);
+            var route = TestConstants.APIRoutes.RegistryApplications + "/discover";
+            var reponse = CallRestApi(Method.POST, route, body);
             
             // Validate that all endpoints are found
             var result = TestHelper.WaitForEndpointDiscoveryToBeCompleted(_context, cts.Token, requestedEndpointUrls: urls).GetAwaiter().GetResult();
@@ -137,42 +124,39 @@ namespace IIoTPlatform_E2E_Tests.Orchestrated {
         }
 
         private void AddTestOpcServers(List<string> endpointUrls) {
-            var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
-            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-
             for (int i = 0; i < endpointUrls.Count; i++) {
                 var body = new {
                     discoveryUrl = endpointUrls[i]
                 };
-
-                var request = new RestRequest(Method.POST);
-                request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
-                request.Resource = TestConstants.APIRoutes.RegistryApplications;
-
-                request.AddJsonBody(JsonConvert.SerializeObject(body));
-
-                var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
-                Assert.NotNull(response);
+                CallRestApi(Method.POST, TestConstants.APIRoutes.RegistryApplications, body);
             }
         }
 
         private void RemoveApplication(string applicationId) {
-            var cts = new CancellationTokenSource(TestConstants.MaxTestTimeoutMilliseconds);
-            var accessToken = TestHelper.GetTokenAsync(_context, cts.Token).GetAwaiter().GetResult();
-            var client = new RestClient(_context.IIoTPlatformConfigHubConfig.BaseUrl) { Timeout = TestConstants.DefaultTimeoutInMilliseconds };
-
-            var request = new RestRequest(Method.DELETE);
-            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);
-            request.Resource = $"{TestConstants.APIRoutes.RegistryApplications}/{applicationId}";
-            var response = client.ExecuteAsync(request, cts.Token).GetAwaiter().GetResult();
-            Assert.True(response.IsSuccessful);
+            var route = $"{TestConstants.APIRoutes.RegistryApplications}/{applicationId}";
+            CallRestApi(Method.DELETE, route);
         }
 
         private void RemoveAllApplications(List<string> applicationIds) {
             foreach (var appId in applicationIds) {
                 RemoveApplication(appId);
             }
+        }
+
+        private IRestResponse CallRestApi(Method method, string route, object body = null) {
+            var accessToken = TestHelper.GetTokenAsync(_context, _cancellationToken.Token).GetAwaiter().GetResult();
+
+            var request = new RestRequest(method);
+            request.Resource = route;
+            request.AddHeader(TestConstants.HttpHeaderNames.Authorization, accessToken);   
+            
+            if (body != null) {
+                request.AddJsonBody(JsonConvert.SerializeObject(body));
+            }       
+            
+            var response = _restClient.ExecuteAsync(request, _cancellationToken.Token).GetAwaiter().GetResult();
+            Assert.True(response.IsSuccessful);
+            return response;
         }
     }
 }
